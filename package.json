@@ -1,0 +1,16 @@
+{
+  "name": "loans-dashboard",
+  "version": "1.0.0",
+  "description": "Лендинг с графиками и страница ввода данных. Node.js + SQLite, без зависимостей.",
+  "private": true,
+  "main": "server.js",
+  "scripts": {
+    "start": "node --disable-warning=ExperimentalWarning server.js"
+  },
+  "engines": {
+    "node": ">=22.5.0"
+  },
+  "dependencies": {
+    "better-sqlite3": "^12.11.1"
+  }
+}

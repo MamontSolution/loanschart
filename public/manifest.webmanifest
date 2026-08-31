@@ -1,0 +1,27 @@
+{
+  "name": "Панель выдач — баланс и выдачи",
+  "short_name": "Панель выдач",
+  "description": "Графики остатка баланса и выдач по дням и часам, страница ввода данных.",
+  "lang": "ru",
+  "dir": "ltr",
+  "start_url": "/LoansChart",
+  "scope": "/",
+  "id": "/LoansChart",
+  "display": "standalone",
+  "orientation": "portrait-primary",
+  "background_color": "#f4f2fb",
+  "theme_color": "#6d3ad6",
+  "icons": [
+    { "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" },
+    { "src": "/assets/icon-512.png", "sizes": "512x512", "type": "image/png" },
+    { "src": "/assets/icon-maskable-512.png", "sizes": "512x512", "type": "image/png", "purpose": "maskable" }
+  ],
+  "shortcuts": [
+    {
+      "name": "Ввод данных",
+      "short_name": "Ввод",
+      "url": "/LoansChart/admin",
+      "icons": [{ "src": "/assets/icon-192.png", "sizes": "192x192", "type": "image/png" }]
+    }
+  ]
+}

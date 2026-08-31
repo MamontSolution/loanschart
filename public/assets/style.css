@@ -1,0 +1,151 @@
+/* ============================================================
+   Общие стили обеих страниц.
+   Светлая тема — база, тёмная переопределяет только цвета.
+   ============================================================ */
+:root{
+  color-scheme: light;
+  --page:      #f9f9f7;
+  --surface:   #fcfcfb;
+  --ink:       #0b0b0b;
+  --ink-2:     #52514e;
+  --ink-muted: #898781;
+  --grid:      #e1e0d9;
+  --axis:      #c3c2b7;
+  --hairline:  rgba(11,11,11,.10);
+  --shadow:    0 1px 2px rgba(11,11,11,.05), 0 8px 24px rgba(11,11,11,.04);
+  --s1:        #2a78d6;   /* остаток баланса  */
+  --s2:        #eb6834;   /* сумма выдач      */
+  --s3:        #1baf7a;   /* кол-во выдач     */
+  --good:      #006300;
+  --bad:       #d03b3b;
+  --bad-soft:  rgba(208,59,59,.10);
+  --font: system-ui, -apple-system, "Segoe UI", Roboto, sans-serif;
+}
+@media (prefers-color-scheme: dark){
+  :root:not([data-theme="light"]){
+    color-scheme: dark;
+    --page:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink-2:#c3c2b7; --ink-muted:#898781;
+    --grid:#2c2c2a; --axis:#383835; --hairline:rgba(255,255,255,.10);
+    --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+    --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good:#0ca30c; --bad:#e66767;
+    --bad-soft:rgba(230,103,103,.12);
+  }
+}
+:root[data-theme="dark"]{
+  color-scheme: dark;
+  --page:#0d0d0d; --surface:#1a1a19; --ink:#fff; --ink-2:#c3c2b7; --ink-muted:#898781;
+  --grid:#2c2c2a; --axis:#383835; --hairline:rgba(255,255,255,.10);
+  --shadow:0 1px 2px rgba(0,0,0,.4), 0 8px 24px rgba(0,0,0,.3);
+  --s1:#3987e5; --s2:#d95926; --s3:#199e70; --good:#0ca30c; --bad:#e66767;
+  --bad-soft:rgba(230,103,103,.12);
+}
+
+*{box-sizing:border-box}
+html,body{margin:0}
+body{
+  background:var(--page); color:var(--ink); font-family:var(--font);
+  font-size:15px; line-height:1.5; -webkit-font-smoothing:antialiased;
+}
+a{color:var(--s1)}
+.wrap{max-width:1080px; margin:0 auto; padding:0 24px}
+.wrap.narrow{max-width:880px}
+
+/* ---------- шапка ---------- */
+.topbar{
+  display:flex; align-items:center; justify-content:space-between; gap:16px;
+  padding:20px 0; border-bottom:1px solid var(--hairline); flex-wrap:wrap;
+}
+.brand{display:flex; align-items:center; gap:10px; font-weight:600; letter-spacing:-.01em;
+  color:var(--ink); text-decoration:none}
+.brand .dot{width:10px;height:10px;border-radius:50%;background:var(--s1)}
+.topbar-actions{display:flex; align-items:center; gap:8px; flex-wrap:wrap}
+.navlink{font-size:13px; color:var(--ink-2); text-decoration:none; padding:7px 4px}
+.navlink:hover{color:var(--ink)}
+
+/* ---------- кнопки и поля ---------- */
+.btn{
+  font:inherit; font-size:13px; color:var(--ink-2); background:var(--surface);
+  border:1px solid var(--hairline); border-radius:8px; padding:7px 12px;
+  cursor:pointer; transition:color .15s, border-color .15s, background .15s;
+}
+.btn:hover{color:var(--ink); border-color:var(--axis)}
+.btn:focus-visible{outline:2px solid var(--s1); outline-offset:2px}
+.btn:disabled{opacity:.5; cursor:default}
+.btn.primary{background:var(--s1); border-color:var(--s1); color:#fff; font-weight:600; padding:9px 18px}
+.btn.primary:hover{filter:brightness(1.08); color:#fff}
+.btn.danger{color:var(--bad)}
+.btn.danger:hover{background:var(--bad-soft); border-color:var(--bad)}
+.btn.sm{padding:5px 10px; font-size:12px}
+
+label.field{display:block}
+label.field > span{display:block; font-size:13px; color:var(--ink-2); margin-bottom:6px}
+input[type="text"], input[type="date"], input[type="password"]{
+  font:inherit; width:100%; padding:9px 12px; border-radius:9px;
+  border:1px solid var(--hairline); background:var(--surface); color:var(--ink);
+  font-variant-numeric:tabular-nums;
+}
+input:focus{outline:2px solid var(--s1); outline-offset:-1px; border-color:transparent}
+input[aria-invalid="true"]{border-color:var(--bad)}
+.hint{font-size:12px; color:var(--ink-muted); margin-top:6px}
+
+/* ---------- карточки ---------- */
+.card{
+  background:var(--surface); border:1px solid var(--hairline); border-radius:16px;
+  padding:22px; box-shadow:var(--shadow); margin-bottom:20px;
+}
+.card-head{display:flex; align-items:flex-start; justify-content:space-between; gap:16px; flex-wrap:wrap}
+.card-head h2{margin:0 0 4px; font-size:18px; font-weight:600; letter-spacing:-.01em}
+.card-head .sub{margin:0; font-size:13px; color:var(--ink-muted)}
+
+/* ---------- сообщения ---------- */
+.msg{
+  border-radius:10px; padding:10px 14px; font-size:13px; margin-bottom:16px;
+  border:1px solid var(--hairline); background:var(--surface);
+}
+.msg.ok{color:var(--good); border-color:var(--good)}
+.msg.err{color:var(--bad); border-color:var(--bad); background:var(--bad-soft)}
+.msg[hidden]{display:none}
+
+/* ---------- таблица ---------- */
+.tscroll{overflow-x:auto; border:1px solid var(--hairline); border-radius:12px; background:var(--surface)}
+table{border-collapse:collapse; width:100%; font-size:13px; font-variant-numeric:tabular-nums}
+th,td{padding:9px 14px; text-align:right; white-space:nowrap; border-bottom:1px solid var(--hairline)}
+th:first-child,td:first-child{text-align:left}
+thead th{color:var(--ink-muted); font-weight:500; background:var(--surface)}
+tbody tr:last-child td{border-bottom:none}
+tbody tr.editing{background:var(--bad-soft)}
+td.actions{text-align:right; white-space:nowrap}
+td.actions .btn{margin-left:6px}
+.empty{color:var(--ink-muted); text-align:center; padding:28px 14px}
+
+/* ---------- графики ---------- */
+.plot{position:relative; width:100%}
+.plot svg{display:block; width:100%; height:auto; touch-action:pan-y}
+.tt{
+  position:absolute; pointer-events:none; z-index:3; opacity:0;
+  transform:translate(-50%,-100%); transition:opacity .1s;
+  background:var(--surface); border:1px solid var(--hairline); border-radius:10px;
+  box-shadow:var(--shadow); padding:8px 11px; font-size:12px; white-space:nowrap; color:var(--ink);
+}
+.tt .t-date{color:var(--ink-muted); margin-bottom:3px}
+.tt .t-val{font-weight:650; font-size:14px; letter-spacing:-.01em}
+.legend{display:flex; gap:16px; flex-wrap:wrap; margin:14px 0 4px}
+.legend .item{display:flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2)}
+.legend .key{width:14px; height:3px; border-radius:2px; flex:none}
+.legend .key.sq{width:11px; height:11px; border-radius:3px}
+.toggle{display:inline-flex; align-items:center; gap:7px; font-size:13px; color:var(--ink-2);
+  cursor:pointer; user-select:none}
+.toggle input{accent-color:var(--s1); width:15px; height:15px; margin:0}
+
+/* ---------- статус и подвал ---------- */
+.status{display:flex; align-items:center; gap:9px; font-size:13px; color:var(--ink-muted)}
+.status .led{width:7px;height:7px;border-radius:50%;background:var(--good);flex:none}
+.status.err{color:var(--bad)} .status.err .led{background:var(--bad)}
+footer{border-top:1px solid var(--hairline); margin-top:48px; padding:24px 0 56px;
+  color:var(--ink-muted); font-size:13px}
+.skeleton{color:var(--ink-muted)}
+
+@media (max-width:640px){
+  .wrap{padding:0 16px}
+  .card{padding:18px 14px}
+}

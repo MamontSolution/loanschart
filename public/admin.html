@@ -1,0 +1,425 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Ввод данных — Панель выдач</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#6d3ad6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Панель выдач">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon-180.png">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/pwa.js" defer></script>
+<style>
+  h1{font-size:26px; letter-spacing:-.02em; margin:36px 0 6px}
+  p.lead{color:var(--ink-2); margin:0 0 28px; max-width:60ch}
+  .form-grid{display:grid; gap:14px; grid-template-columns:repeat(auto-fit,minmax(180px,1fr))}
+  .form-actions{display:flex; align-items:center; gap:10px; margin-top:18px; flex-wrap:wrap}
+  .form-actions .spacer{flex:1}
+  #editingNote{font-size:13px; color:var(--ink-2)}
+  #editingNote[hidden]{display:none}
+  .count{font-size:13px; color:var(--ink-muted); margin:0 0 10px}
+  .login{max-width:360px; margin:80px auto}
+  .hbar{display:flex; align-items:flex-end; gap:12px; flex-wrap:wrap; margin-top:18px}
+  .hbar label.field{min-width:180px}
+  table.htable input{width:100%; min-width:120px; padding:6px 8px; font-size:13px;
+    border-radius:7px; border:1px solid var(--hairline); background:var(--page); color:var(--ink);
+    font-variant-numeric:tabular-nums}
+  table.htable input:focus{outline:2px solid var(--s1); outline-offset:-1px; border-color:transparent}
+  table.htable td{padding:5px 10px}
+  table.htable td.hh{font-variant-numeric:tabular-nums; color:var(--ink-2)}
+  table.htable tr.filled td.hh{color:var(--ink); font-weight:600}
+</style>
+</head>
+<body>
+
+<div class="wrap narrow">
+  <div class="topbar">
+    <a class="brand" href="/LoansChart"><span class="dot"></span><span>Панель выдач</span></a>
+    <div class="topbar-actions">
+      <a class="navlink" href="/LoansChart">К лендингу</a>
+      <button class="btn" id="theme" type="button" aria-label="Переключить тему">Тема</button>
+    </div>
+  </div>
+
+  <!-- ===== экран входа: показывается, только если задан ADMIN_PASSWORD ===== -->
+  <div class="login card" id="loginCard" hidden>
+    <div class="card-head"><div><h2>Вход</h2><p class="sub">Страница защищена паролем</p></div></div>
+    <div class="msg err" id="loginErr" hidden></div>
+    <form id="loginForm" style="margin-top:16px">
+      <label class="field"><span>Пароль</span>
+        <input type="password" id="password" autocomplete="current-password" required></label>
+      <div class="form-actions"><button class="btn primary" type="submit">Войти</button></div>
+    </form>
+  </div>
+
+  <!-- ===== рабочая область ===== -->
+  <main id="workspace" hidden>
+    <h1>Ввод данных</h1>
+    <p class="lead">Одна запись — один день. Если внести дату, которая уже есть,
+      запись за этот день обновится, а не задвоится.</p>
+
+    <div class="msg ok" id="okMsg" hidden></div>
+    <div class="msg err" id="errMsg" hidden></div>
+
+    <div class="card">
+      <div class="card-head">
+        <div>
+          <h2 id="formTitle">Новая запись</h2>
+          <p class="sub">Пустое поле сохранится как «нет данных» — график в этом месте прервётся</p>
+        </div>
+      </div>
+
+      <form id="entryForm" style="margin-top:18px" novalidate>
+        <div class="form-grid">
+          <label class="field"><span>Дата</span>
+            <input type="date" id="fDate" required></label>
+          <label class="field"><span>Остаток баланса, ₽</span>
+            <input type="text" id="fBalance" inputmode="decimal" placeholder="523 454 325"></label>
+          <label class="field"><span>Сумма выдач, ₽</span>
+            <input type="text" id="fAmount" inputmode="decimal" placeholder="13 730 440"></label>
+          <label class="field"><span>Количество выдач, шт.</span>
+            <input type="text" id="fCount" inputmode="numeric" placeholder="328"></label>
+        </div>
+        <div class="form-actions">
+          <button class="btn primary" type="submit" id="submitBtn">Сохранить</button>
+          <button class="btn" type="button" id="cancelBtn" hidden>Отменить правку</button>
+          <span class="spacer"></span>
+          <span id="editingNote" hidden></span>
+        </div>
+      </form>
+    </div>
+
+    <p class="count" id="rowCount">&nbsp;</p>
+    <div class="tscroll">
+      <table>
+        <thead><tr>
+          <th>Дата</th><th>Остаток баланса</th><th>Сумма выдач</th><th>Кол-во выдач</th><th></th>
+        </tr></thead>
+        <tbody id="tbody"><tr><td colspan="5" class="empty">Загрузка…</td></tr></tbody>
+      </table>
+    </div>
+
+    <div class="card" style="margin-top:32px">
+      <div class="card-head">
+        <div>
+          <h2>Почасовая разбивка</h2>
+          <p class="sub">Внутри выбранного дня. Пустая строка не сохраняется; очистите все три
+            поля и нажмите «Сохранить», чтобы удалить час.</p>
+        </div>
+      </div>
+
+      <div class="hbar">
+        <label class="field"><span>День</span>
+          <input type="date" id="hDate"></label>
+        <button class="btn" type="button" id="hLoad">Загрузить</button>
+        <span class="spacer"></span>
+        <button class="btn primary" type="button" id="hSaveAll">Сохранить</button>
+      </div>
+
+      <p class="count" id="hCount" style="margin-top:14px">&nbsp;</p>
+      <div class="tscroll">
+        <table class="htable">
+          <thead><tr>
+            <th>Час</th><th>Остаток баланса, ₽</th><th>Сумма выдач, ₽</th><th>Кол-во выдач, шт.</th>
+          </tr></thead>
+          <tbody id="hBody"></tbody>
+        </table>
+      </div>
+    </div>
+  </main>
+
+  <footer>Изменения сразу видны на <a href="/LoansChart">лендинге</a>.</footer>
+</div>
+
+<script src="/assets/charts.js"></script>
+<script>
+'use strict';
+const { longDate, nf } = Charts;
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+let rows = [];
+let editingId = null;
+
+/* ------------------------------------------------------------------ */
+/* Сообщения                                                           */
+/* ------------------------------------------------------------------ */
+let msgTimer;
+function flash(kind, text){
+  const ok = $('okMsg'), err = $('errMsg');
+  ok.hidden = true; err.hidden = true;
+  const box = kind === 'ok' ? ok : err;
+  box.textContent = text; box.hidden = false;
+  clearTimeout(msgTimer);
+  if (kind === 'ok') msgTimer = setTimeout(() => { box.hidden = true; }, 4000);
+}
+
+/* ------------------------------------------------------------------ */
+/* Запросы к API                                                       */
+/* ------------------------------------------------------------------ */
+async function api(method, url, body){
+  const res = await fetch(url, {
+    method,
+    headers: body ? { 'Content-Type': 'application/json' } : undefined,
+    body: body ? JSON.stringify(body) : undefined
+  });
+  let data = null;
+  try { data = await res.json(); } catch {}
+  if (!res.ok) throw new Error((data && data.error) || ('Ошибка ' + res.status));
+  return data;
+}
+
+/* ------------------------------------------------------------------ */
+/* Таблица                                                             */
+/* ------------------------------------------------------------------ */
+function renderTable(){
+  const tb = $('tbody');
+  if (!rows.length){
+    tb.innerHTML = '<tr><td colspan="5" class="empty">Записей пока нет — добавьте первую выше</td></tr>';
+    $('rowCount').textContent = ' ';
+    return;
+  }
+  $('rowCount').textContent = 'Всего записей: ' + rows.length;
+  tb.innerHTML = rows.slice().reverse().map(r => `
+    <tr data-id="${r.id}" class="${r.id === editingId ? 'editing' : ''}">
+      <td>${esc(longDate(r.date))}</td>
+      <td>${r.balance === null ? '—' : nf.format(Math.round(r.balance))}</td>
+      <td>${r.amount  === null ? '—' : nf.format(Math.round(r.amount))}</td>
+      <td>${r.count   === null ? '—' : nf.format(r.count)}</td>
+      <td class="actions">
+        <button class="btn sm" data-act="edit" type="button">Править</button>
+        <button class="btn sm danger" data-act="del" type="button">Удалить</button>
+      </td>
+    </tr>`).join('');
+}
+
+async function load(){
+  try {
+    rows = await api('GET', '/api/entries');
+    renderTable();
+  } catch (e){ flash('err', 'Не удалось загрузить записи: ' + e.message); }
+}
+
+/* ------------------------------------------------------------------ */
+/* Форма                                                               */
+/* ------------------------------------------------------------------ */
+function setEditing(row){
+  editingId = row ? row.id : null;
+  $('formTitle').textContent = row ? 'Правка записи' : 'Новая запись';
+  $('submitBtn').textContent = row ? 'Сохранить изменения' : 'Сохранить';
+  $('cancelBtn').hidden = !row;
+  $('editingNote').hidden = !row;
+  if (row){
+    $('editingNote').textContent = 'Правим ' + longDate(row.date);
+    $('fDate').value    = row.date;
+    $('fBalance').value = row.balance === null ? '' : String(row.balance);
+    $('fAmount').value  = row.amount  === null ? '' : String(row.amount);
+    $('fCount').value   = row.count   === null ? '' : String(row.count);
+    $('fDate').focus();
+    window.scrollTo({ top: 0, behavior: 'smooth' });
+  } else {
+    $('entryForm').reset();
+    $('fDate').valueAsDate = new Date();
+  }
+  renderTable();
+}
+
+$('entryForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  const payload = {
+    date:    $('fDate').value,
+    balance: $('fBalance').value.trim(),
+    amount:  $('fAmount').value.trim(),
+    count:   $('fCount').value.trim()
+  };
+  if (!payload.date) return flash('err', 'Укажите дату');
+
+  $('submitBtn').disabled = true;
+  try {
+    if (editingId !== null){
+      await api('PUT', '/api/entries/' + editingId, payload);
+      flash('ok', 'Запись обновлена');
+    } else {
+      const existed = rows.some(r => r.date === payload.date);
+      await api('POST', '/api/entries', payload);
+      flash('ok', existed
+        ? 'Запись за ' + longDate(payload.date) + ' обновлена — эта дата уже была'
+        : 'Запись добавлена');
+    }
+    await load();
+    setEditing(null);
+  } catch (err){
+    flash('err', err.message);
+  } finally {
+    $('submitBtn').disabled = false;
+  }
+});
+
+$('cancelBtn').addEventListener('click', () => setEditing(null));
+
+$('tbody').addEventListener('click', async e => {
+  const btn = e.target.closest('button[data-act]');
+  if (!btn) return;
+  const id = Number(btn.closest('tr').dataset.id);
+  const row = rows.find(r => r.id === id);
+  if (!row) return;
+
+  if (btn.dataset.act === 'edit') return setEditing(row);
+
+  // удаление: подтверждение прямо в строке, без модальных окон браузера
+  if (btn.dataset.textConfirm !== '1'){
+    btn.dataset.textConfirm = '1';
+    btn.textContent = 'Точно удалить?';
+    setTimeout(() => {
+      if (btn.isConnected){ btn.dataset.textConfirm = ''; btn.textContent = 'Удалить'; }
+    }, 4000);
+    return;
+  }
+  try {
+    await api('DELETE', '/api/entries/' + id);
+    if (editingId === id) setEditing(null);
+    flash('ok', 'Запись за ' + longDate(row.date) + ' удалена');
+    await load();
+  } catch (err){ flash('err', err.message); }
+});
+
+$('theme').addEventListener('click', () => {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const cur = document.documentElement.getAttribute('data-theme') || (dark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+});
+
+/* ------------------------------------------------------------------ */
+/* Почасовая разбивка                                                  */
+/* ------------------------------------------------------------------ */
+const hh = h => String(h).padStart(2, '0') + ':00';
+let hourIds = {};   // { [hour]: id } — какие часы уже есть в базе
+
+function buildHourRows(){
+  const tb = $('hBody');
+  tb.innerHTML = Array.from({ length: 24 }, (_, h) => `
+    <tr data-hour="${h}">
+      <td class="hh">${hh(h)}</td>
+      <td><input type="text" inputmode="decimal" data-f="balance" aria-label="Остаток баланса в ${hh(h)}"></td>
+      <td><input type="text" inputmode="decimal" data-f="amount"  aria-label="Сумма выдач в ${hh(h)}"></td>
+      <td><input type="text" inputmode="numeric" data-f="count"   aria-label="Количество выдач в ${hh(h)}"></td>
+    </tr>`).join('');
+}
+
+function markFilled(){
+  $('hBody').querySelectorAll('tr').forEach(tr => {
+    const any = [...tr.querySelectorAll('input')].some(i => i.value.trim() !== '');
+    tr.classList.toggle('filled', any);
+  });
+}
+
+async function loadHours(){
+  const date = $('hDate').value;
+  if (!date) return flash('err', 'Выберите день');
+  try {
+    const list = await api('GET', '/api/hours?date=' + encodeURIComponent(date));
+    hourIds = {};
+    const byHour = {};
+    list.forEach(r => { hourIds[r.hour] = r.id; byHour[r.hour] = r; });
+    $('hBody').querySelectorAll('tr').forEach(tr => {
+      const h = Number(tr.dataset.hour), row = byHour[h];
+      tr.querySelectorAll('input').forEach(inp => {
+        const v = row ? row[inp.dataset.f] : null;
+        inp.value = v === null || v === undefined ? '' : String(v);
+      });
+    });
+    markFilled();
+    $('hCount').textContent = list.length
+      ? 'Заполнено часов: ' + list.length + ' из 24'
+      : 'За этот день почасовых данных ещё нет';
+  } catch (e){ flash('err', 'Не удалось загрузить часы: ' + e.message); }
+}
+
+async function saveHours(){
+  const date = $('hDate').value;
+  if (!date) return flash('err', 'Выберите день');
+
+  const jobs = [];
+  $('hBody').querySelectorAll('tr').forEach(tr => {
+    const h = Number(tr.dataset.hour);
+    const vals = {};
+    tr.querySelectorAll('input').forEach(i => { vals[i.dataset.f] = i.value.trim(); });
+    const empty = !vals.balance && !vals.amount && !vals.count;
+    const id = hourIds[h];
+    if (empty){
+      if (id) jobs.push({ kind: 'del', h, id });
+    } else {
+      jobs.push({ kind: 'put', h, id, body: { date, hour: h, ...vals } });
+    }
+  });
+
+  if (!jobs.length) return flash('err', 'Нечего сохранять — заполните хотя бы один час');
+
+  $('hSaveAll').disabled = true;
+  const errs = [];
+  for (const j of jobs){
+    try {
+      if (j.kind === 'del') await api('DELETE', '/api/hours/' + j.id);
+      else if (j.id)        await api('PUT', '/api/hours/' + j.id, j.body);
+      else                  await api('POST', '/api/hours', j.body);
+    } catch (e){ errs.push(hh(j.h) + ' — ' + e.message); }
+  }
+  $('hSaveAll').disabled = false;
+
+  await loadHours();
+  if (errs.length) flash('err', 'Часть часов не сохранена: ' + errs.join('; '));
+  else flash('ok', 'Почасовые данные за ' + longDate(date) + ' сохранены');
+}
+
+function initHours(){
+  buildHourRows();
+  if (!$('hDate').value) $('hDate').valueAsDate = new Date();
+  $('hBody').addEventListener('input', markFilled);
+  $('hLoad').addEventListener('click', loadHours);
+  $('hDate').addEventListener('change', loadHours);
+  $('hSaveAll').addEventListener('click', saveHours);
+  loadHours();
+}
+
+/* ------------------------------------------------------------------ */
+/* Старт: если сервер требует пароль — сначала показываем вход          */
+/* ------------------------------------------------------------------ */
+$('loginForm').addEventListener('submit', async e => {
+  e.preventDefault();
+  $('loginErr').hidden = true;
+  try {
+    await api('POST', '/api/login', { password: $('password').value });
+    start();
+  } catch (err){
+    $('loginErr').textContent = err.message;
+    $('loginErr').hidden = false;
+  }
+});
+
+function start(){
+  $('loginCard').hidden = true;
+  $('workspace').hidden = false;
+  setEditing(null);
+  load();
+  initHours();
+}
+
+(async function boot(){
+  try {
+    const s = await api('GET', '/api/session');
+    if (s.authRequired && !s.authenticated){
+      $('loginCard').hidden = false;
+      $('password').focus();
+    } else start();
+  } catch { start(); }
+})();
+</script>
+</body>
+</html>

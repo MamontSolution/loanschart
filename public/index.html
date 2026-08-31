@@ -1,0 +1,279 @@
+<!doctype html>
+<html lang="ru">
+<head>
+<meta charset="utf-8">
+<meta name="viewport" content="width=device-width, initial-scale=1">
+<title>Панель выдач — баланс и выдачи по дням</title>
+<link rel="manifest" href="/manifest.webmanifest">
+<meta name="theme-color" content="#6d3ad6">
+<meta name="apple-mobile-web-app-capable" content="yes">
+<meta name="apple-mobile-web-app-status-bar-style" content="black-translucent">
+<meta name="apple-mobile-web-app-title" content="Панель выдач">
+<link rel="icon" href="/favicon.ico" sizes="any">
+<link rel="icon" type="image/png" sizes="32x32" href="/assets/favicon-32.png">
+<link rel="icon" type="image/png" sizes="16x16" href="/assets/favicon-16.png">
+<link rel="apple-touch-icon" href="/assets/apple-touch-icon-180.png">
+<link rel="stylesheet" href="/assets/style.css">
+<script src="/assets/pwa.js" defer></script>
+<style>
+  .hero{padding:64px 0 40px}
+  .eyebrow{font-size:12px; letter-spacing:.08em; text-transform:uppercase;
+    color:var(--ink-muted); margin:0 0 14px}
+  .hero h1{margin:0 0 14px; font-size:clamp(32px,5vw,52px); line-height:1.08;
+    letter-spacing:-.03em; font-weight:650; max-width:16ch}
+  .hero p.lead{margin:0; color:var(--ink-2); font-size:17px; max-width:56ch}
+  .hero-figure{margin:36px 0 0; display:flex; align-items:baseline; gap:14px; flex-wrap:wrap}
+  .hero-figure .val{font-size:clamp(40px,6vw,60px); font-weight:650;
+    letter-spacing:-.03em; line-height:1}
+  .hero-figure .cap{color:var(--ink-muted); font-size:14px}
+  .delta{font-size:14px; font-weight:600}
+  .delta.up{color:var(--good)} .delta.down{color:var(--bad)}
+  section.charts{padding:56px 0 0}
+  .card.chart{padding-bottom:14px}
+  details.tablewrap{margin:8px 0 40px}
+  details.tablewrap summary{cursor:pointer; font-size:14px; color:var(--ink-2);
+    padding:8px 0; list-style:none; display:inline-flex; align-items:center; gap:7px}
+  details.tablewrap summary::-webkit-details-marker{display:none}
+  details.tablewrap summary::before{content:"▸"; color:var(--ink-muted); transition:transform .15s}
+  details.tablewrap[open] summary::before{transform:rotate(90deg)}
+  .empty-state{text-align:center; padding:60px 20px; color:var(--ink-muted)}
+  .empty-state h2{color:var(--ink); font-size:20px; margin:0 0 8px}
+  @media (max-width:640px){ .hero{padding:44px 0 28px} }
+</style>
+</head>
+<body>
+
+<div class="wrap">
+  <div class="topbar">
+    <a class="brand" href="/LoansChart"><span class="dot"></span><span>Панель выдач</span></a>
+    <div class="topbar-actions">
+      <a class="navlink" href="/LoansChart/admin">Ввод данных</a>
+      <button class="btn" id="refresh" type="button">Обновить</button>
+      <button class="btn" id="theme" type="button" aria-label="Переключить тему">Тема</button>
+    </div>
+  </div>
+
+  <header class="hero">
+    <p class="eyebrow">Данные из собственной базы</p>
+    <h1>Всё, что происходит с балансом и выдачами</h1>
+    <p class="lead">Показатели вносятся на странице ввода и сразу попадают сюда — в графики
+      и таблицу.</p>
+
+    <div class="hero-figure">
+      <span class="val" id="heroVal">—</span>
+      <span class="cap">остаток баланса на <span id="heroDate">—</span></span>
+      <span class="delta" id="heroDelta"></span>
+    </div>
+  </header>
+
+  <section class="charts" id="charts">
+    <div class="card chart">
+      <div class="card-head">
+        <div><h2>Остаток баланса</h2><p class="sub">По дням, рубли</p></div>
+        <label class="toggle"><input type="checkbox" id="logScale"> логарифмическая шкала</label>
+      </div>
+      <div class="plot" id="plotBalance"></div>
+    </div>
+
+    <div class="card chart">
+      <div class="card-head">
+        <div><h2>Выдачи по дням</h2>
+          <p class="sub">Сумма и количество — на отдельных шкалах, чтобы величины не искажали друг друга</p></div>
+      </div>
+      <div class="legend">
+        <span class="item"><span class="key sq" style="background:var(--s2)"></span>Сумма выдач, ₽</span>
+        <span class="item"><span class="key" style="background:var(--s3)"></span>Количество выдач, шт.</span>
+      </div>
+      <div class="plot" id="plotAmount"></div>
+      <div class="plot" id="plotCount"></div>
+    </div>
+
+    <div class="card chart" id="hourCard">
+      <div class="card-head">
+        <div><h2>Почасовой профиль</h2>
+          <p class="sub">Баланс и выдачи по часам выбранного дня</p></div>
+        <label class="field" style="min-width:168px"><span>День</span>
+          <input type="date" id="hDay"></label>
+      </div>
+      <div class="legend">
+        <span class="item"><span class="key" style="background:var(--s1)"></span>Остаток баланса, ₽</span>
+        <span class="item"><span class="key sq" style="background:var(--s2)"></span>Сумма выдач, ₽</span>
+        <span class="item"><span class="key" style="background:var(--s3)"></span>Количество выдач, шт.</span>
+      </div>
+      <div class="plot" id="hPlotBalance"></div>
+      <div class="plot" id="hPlotAmount"></div>
+      <div class="plot" id="hPlotCount"></div>
+      <div class="status" id="hStatus" style="margin-top:10px">
+        <span class="led"></span><span id="hStatusText">Загрузка…</span></div>
+    </div>
+
+    <details class="tablewrap">
+      <summary>Показать данные таблицей</summary>
+      <div class="tscroll">
+        <table>
+          <thead><tr><th>Дата</th><th>Остаток баланса</th><th>Сумма выдач</th><th>Кол-во выдач</th></tr></thead>
+          <tbody id="tbody"><tr><td colspan="4" class="skeleton">Загрузка…</td></tr></tbody>
+        </table>
+      </div>
+    </details>
+
+    <div class="status" id="status"><span class="led"></span><span id="statusText">Загрузка данных…</span></div>
+  </section>
+
+  <div class="empty-state" id="emptyState" hidden>
+    <h2>Пока нет ни одной записи</h2>
+    <p>Внесите первый день на <a href="/LoansChart/admin">странице ввода</a> — графики появятся сразу.</p>
+  </div>
+
+  <footer>Данные хранятся в собственной базе. Страница обновляется автоматически каждые 60 секунд.</footer>
+</div>
+
+<script src="/assets/charts.js"></script>
+<script>
+'use strict';
+const { money, units, longDate, nf, nf1 } = Charts;
+
+const group = Charts.createGroup([
+  { host:'plotBalance', key:'balance', kind:'line', color:'var(--s1)', height:280,
+    fmt:money, label:'Остаток баланса по дням', logCapable:true },
+  { host:'plotAmount',  key:'amount',  kind:'bar',  color:'var(--s2)', height:230,
+    fmt:money, label:'Сумма выдач по дням' },
+  { host:'plotCount',   key:'count',   kind:'line', color:'var(--s3)', height:170,
+    fmt:units, label:'Количество выдач по дням' }
+]);
+
+const $ = id => document.getElementById(id);
+const esc = s => String(s).replace(/[&<>"]/g, c =>
+  ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+
+function setDelta(diff, base, note){
+  const de = $('heroDelta');
+  if (base){
+    const pct = diff / Math.abs(base) * 100;
+    de.textContent = (diff >= 0 ? '+' : '−') + nf1.format(Math.abs(pct)) + '% ' + note;
+    de.className = 'delta ' + (diff >= 0 ? 'up' : 'down');
+  } else { de.textContent = ''; de.className = 'delta'; }
+}
+
+function renderNumbers(d, recentHours){
+  // остаток берём из последнего внесённого часа; дни — запасной вариант
+  const h = (recentHours || []).filter(r => r.balance !== null);
+  if (h.length){
+    $('heroVal').textContent  = money(h[0].balance);
+    $('heroDate').textContent = longDate(h[0].date) + ', ' + hh(h[0].hour);
+    if (h.length > 1) setDelta(h[0].balance - h[1].balance, h[1].balance, 'к прошлому часу');
+    else setDelta(0, 0);
+  } else {
+    let bi = -1;
+    for (let i = d.length - 1; i >= 0; i--) if (d[i].balance !== null){ bi = i; break; }
+    if (bi > -1){
+      $('heroVal').textContent  = money(d[bi].balance);
+      $('heroDate').textContent = longDate(d[bi].date);
+      let prev = -1;
+      for (let i = bi - 1; i >= 0; i--) if (d[i].balance !== null){ prev = i; break; }
+      setDelta(prev > -1 ? d[bi].balance - d[prev].balance : 0,
+               prev > -1 ? d[prev].balance : 0, 'к прошлой записи');
+    } else {
+      $('heroVal').textContent = '—'; $('heroDate').textContent = '—'; $('heroDelta').textContent = '';
+    }
+  }
+
+  $('tbody').innerHTML = d.map(x =>
+    `<tr><td>${esc(longDate(x.date))}</td>` +
+    `<td>${x.balance === null ? '—' : nf.format(Math.round(x.balance))}</td>` +
+    `<td>${x.amount  === null ? '—' : nf.format(Math.round(x.amount))}</td>` +
+    `<td>${x.count   === null ? '—' : nf.format(x.count)}</td></tr>`).join('');
+}
+
+
+async function refresh(){
+  const st = $('status'), tx = $('statusText');
+  st.classList.remove('err');
+  tx.textContent = 'Обновляем…';
+  try{
+    const res = await fetch('/api/entries', { cache:'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const rows = await res.json();
+
+    let recentHours = [];
+    try {
+      const hr = await fetch('/api/hours/recent?limit=2', { cache:'no-store' });
+      if (hr.ok) recentHours = await hr.json();
+    } catch {}
+
+    const empty = rows.length === 0 && recentHours.length === 0;
+    $('charts').hidden    = empty;
+    $('emptyState').hidden = !empty;
+
+    renderNumbers(rows, recentHours);
+    group.setData(rows);
+
+    const t = new Date().toLocaleTimeString('ru-RU', { hour:'2-digit', minute:'2-digit' });
+    tx.textContent = 'Обновлено в ' + t + ' · записей: ' + rows.length;
+  } catch (e){
+    st.classList.add('err');
+    tx.textContent = 'Не удалось загрузить данные: ' + e.message;
+  }
+}
+
+/* ------------------------------------------------------------------ */
+/* Почасовой профиль выбранного дня                                    */
+/* ------------------------------------------------------------------ */
+const hh = h => String(h).padStart(2, '0') + ':00';
+
+const hourGroup = Charts.createGroup([
+  { host:'hPlotBalance', key:'balance', kind:'line', color:'var(--s1)', height:230,
+    fmt:money, label:'Остаток баланса по часам' },
+  { host:'hPlotAmount',  key:'amount',  kind:'bar',  color:'var(--s2)', height:200,
+    fmt:money, label:'Сумма выдач по часам' },
+  { host:'hPlotCount',   key:'count',   kind:'line', color:'var(--s3)', height:160,
+    fmt:units, label:'Количество выдач по часам' }
+]);
+
+async function refreshHours(){
+  const date = $('hDay').value;
+  const st = $('hStatus'), tx = $('hStatusText');
+  st.classList.remove('err');
+  if (!date){ tx.textContent = 'Выберите день'; return; }
+  try {
+    const res = await fetch('/api/hours?date=' + encodeURIComponent(date), { cache:'no-store' });
+    if (!res.ok) throw new Error('HTTP ' + res.status);
+    const list = await res.json();
+    const byHour = {};
+    list.forEach(r => { byHour[r.hour] = r; });
+    const data = Array.from({ length: 24 }, (_, h) => ({
+      label: hh(h),
+      balance: byHour[h] ? byHour[h].balance : null,
+      amount:  byHour[h] ? byHour[h].amount  : null,
+      count:   byHour[h] ? byHour[h].count   : null
+    }));
+    hourGroup.setData(data);
+    tx.textContent = list.length
+      ? longDate(date) + ' · заполнено часов: ' + list.length + ' из 24'
+      : 'За ' + longDate(date) + ' почасовых данных нет';
+  } catch (e){
+    st.classList.add('err');
+    tx.textContent = 'Не удалось загрузить почасовые данные: ' + e.message;
+  }
+}
+
+$('hDay').valueAsDate = new Date();
+$('hDay').addEventListener('change', refreshHours);
+refreshHours();
+
+$('refresh').addEventListener('click', refresh);
+$('refresh').addEventListener('click', refreshHours);
+$('logScale').addEventListener('change', e => group.setLog(e.target.checked));
+$('theme').addEventListener('click', () => {
+  const dark = matchMedia('(prefers-color-scheme: dark)').matches;
+  const cur = document.documentElement.getAttribute('data-theme') || (dark ? 'dark' : 'light');
+  document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
+  group.render();
+  hourGroup.render();
+});
+
+refresh();
+setInterval(() => { refresh(); refreshHours(); }, 60000);
+</script>
+</body>
+</html>
