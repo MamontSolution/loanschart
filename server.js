@@ -92,6 +92,7 @@ const MIME = {
   '.ico':  'image/x-icon',
   '.json': 'application/json; charset=utf-8',
   '.png':  'image/png',
+  '.gif':  'image/gif',
   '.webp': 'image/webp',
   '.webmanifest': 'application/manifest+json; charset=utf-8'
 };

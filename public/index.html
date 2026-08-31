@@ -26,8 +26,15 @@
   .hero-figure .val{font-size:clamp(40px,6vw,60px); font-weight:650;
     letter-spacing:-.03em; line-height:1}
   .hero-figure .cap{color:var(--ink-muted); font-size:14px}
+  .hero-figure.secondary{margin-top:18px}
+  .hero-figure.secondary .val{font-size:clamp(22px,3.4vw,32px)}
   .delta{font-size:14px; font-weight:600}
   .delta.up{color:var(--good)} .delta.down{color:var(--bad)}
+  .goal-hit{margin:30px 0 0}
+  .goal-hit img{width:min(300px,64vw); height:auto; border-radius:18px; display:block;
+    box-shadow:var(--shadow)}
+  .goal-hit figcaption{margin-top:12px; font-size:15px; font-weight:650; color:var(--good)}
+  .goal-hit[hidden]{display:none}
   section.charts{padding:56px 0 0}
   .card.chart{padding-bottom:14px}
   details.tablewrap{margin:8px 0 40px}
@@ -60,10 +67,23 @@
       и таблицу.</p>
 
     <div class="hero-figure">
+      <span class="val" id="heroRemain">—</span>
+      <span class="cap">осталось до 600 млн · за <span id="heroMonth">—</span>
+        выдано <span id="heroMonthSum">—</span></span>
+      <span class="delta" id="heroRemainNote"></span>
+    </div>
+
+    <div class="hero-figure secondary">
       <span class="val" id="heroVal">—</span>
       <span class="cap">остаток баланса на <span id="heroDate">—</span></span>
       <span class="delta" id="heroDelta"></span>
     </div>
+
+    <figure class="goal-hit" id="goalHit" hidden>
+      <img src="/assets/mascot_money_pool.gif" width="640" height="640"
+           alt="Талисман плещется в бассейне из денег">
+      <figcaption>Цель на <span id="goalMonth">—</span> выполнена 🎉</figcaption>
+    </figure>
   </header>
 
   <section class="charts" id="charts">
@@ -86,25 +106,6 @@
       </div>
       <div class="plot" id="plotAmount"></div>
       <div class="plot" id="plotCount"></div>
-    </div>
-
-    <div class="card chart" id="hourCard">
-      <div class="card-head">
-        <div><h2>Почасовой профиль</h2>
-          <p class="sub">Баланс и выдачи по часам выбранного дня</p></div>
-        <label class="field" style="min-width:168px"><span>День</span>
-          <input type="date" id="hDay"></label>
-      </div>
-      <div class="legend">
-        <span class="item"><span class="key" style="background:var(--s1)"></span>Остаток баланса, ₽</span>
-        <span class="item"><span class="key sq" style="background:var(--s2)"></span>Сумма выдач, ₽</span>
-        <span class="item"><span class="key" style="background:var(--s3)"></span>Количество выдач, шт.</span>
-      </div>
-      <div class="plot" id="hPlotBalance"></div>
-      <div class="plot" id="hPlotAmount"></div>
-      <div class="plot" id="hPlotCount"></div>
-      <div class="status" id="hStatus" style="margin-top:10px">
-        <span class="led"></span><span id="hStatusText">Загрузка…</span></div>
     </div>
 
     <details class="tablewrap">
@@ -145,6 +146,12 @@ const group = Charts.createGroup([
 const $ = id => document.getElementById(id);
 const esc = s => String(s).replace(/[&<>"]/g, c =>
   ({ '&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;' }[c]));
+const hh = h => String(h).padStart(2, '0') + ':00';
+
+const MONTH_TARGET = 600000000;   // цель по сумме выдач за календарный месяц, ₽ (600 млн)
+const monthOf   = iso => String(iso).slice(0, 7);                 // '2026-08-31' → '2026-08'
+const thisMonth = () => monthOf(new Date().toLocaleDateString('sv-SE'));   // локальный 'ГГГГ-ММ'
+const monthName = () => new Date().toLocaleDateString('ru-RU', { month: 'long' });
 
 function setDelta(diff, base, note){
   const de = $('heroDelta');
@@ -177,6 +184,25 @@ function renderNumbers(d, recentHours){
       $('heroVal').textContent = '—'; $('heroDate').textContent = '—'; $('heroDelta').textContent = '';
     }
   }
+
+  // осталось до цели по выдачам за текущий месяц
+  const mk = thisMonth();
+  const monthSum = d.reduce((a, x) =>
+    a + (monthOf(x.date) === mk && x.amount ? x.amount : 0), 0);
+  const remain = MONTH_TARGET - monthSum;
+  $('heroRemain').textContent   = money(Math.max(0, remain));
+  $('heroMonth').textContent    = monthName();
+  $('heroMonthSum').textContent = money(monthSum);
+  const rn = $('heroRemainNote'), goalDone = remain <= 0;
+  if (goalDone){
+    rn.textContent = 'цель достигнута · сверх плана ' + money(-remain);
+    rn.className = 'delta up';
+  } else {
+    rn.textContent = nf1.format(monthSum / MONTH_TARGET * 100) + '% плана';
+    rn.className = 'delta';
+  }
+  $('goalHit').hidden = !goalDone;
+  if (goalDone) $('goalMonth').textContent = monthName();
 
   $('tbody').innerHTML = d.map(x =>
     `<tr><td>${esc(longDate(x.date))}</td>` +
@@ -216,64 +242,17 @@ async function refresh(){
   }
 }
 
-/* ------------------------------------------------------------------ */
-/* Почасовой профиль выбранного дня                                    */
-/* ------------------------------------------------------------------ */
-const hh = h => String(h).padStart(2, '0') + ':00';
-
-const hourGroup = Charts.createGroup([
-  { host:'hPlotBalance', key:'balance', kind:'line', color:'var(--s1)', height:230,
-    fmt:money, label:'Остаток баланса по часам' },
-  { host:'hPlotAmount',  key:'amount',  kind:'bar',  color:'var(--s2)', height:200,
-    fmt:money, label:'Сумма выдач по часам' },
-  { host:'hPlotCount',   key:'count',   kind:'line', color:'var(--s3)', height:160,
-    fmt:units, label:'Количество выдач по часам' }
-]);
-
-async function refreshHours(){
-  const date = $('hDay').value;
-  const st = $('hStatus'), tx = $('hStatusText');
-  st.classList.remove('err');
-  if (!date){ tx.textContent = 'Выберите день'; return; }
-  try {
-    const res = await fetch('/api/hours?date=' + encodeURIComponent(date), { cache:'no-store' });
-    if (!res.ok) throw new Error('HTTP ' + res.status);
-    const list = await res.json();
-    const byHour = {};
-    list.forEach(r => { byHour[r.hour] = r; });
-    const data = Array.from({ length: 24 }, (_, h) => ({
-      label: hh(h),
-      balance: byHour[h] ? byHour[h].balance : null,
-      amount:  byHour[h] ? byHour[h].amount  : null,
-      count:   byHour[h] ? byHour[h].count   : null
-    }));
-    hourGroup.setData(data);
-    tx.textContent = list.length
-      ? longDate(date) + ' · заполнено часов: ' + list.length + ' из 24'
-      : 'За ' + longDate(date) + ' почасовых данных нет';
-  } catch (e){
-    st.classList.add('err');
-    tx.textContent = 'Не удалось загрузить почасовые данные: ' + e.message;
-  }
-}
-
-$('hDay').valueAsDate = new Date();
-$('hDay').addEventListener('change', refreshHours);
-refreshHours();
-
 $('refresh').addEventListener('click', refresh);
-$('refresh').addEventListener('click', refreshHours);
 $('logScale').addEventListener('change', e => group.setLog(e.target.checked));
 $('theme').addEventListener('click', () => {
   const dark = matchMedia('(prefers-color-scheme: dark)').matches;
   const cur = document.documentElement.getAttribute('data-theme') || (dark ? 'dark' : 'light');
   document.documentElement.setAttribute('data-theme', cur === 'dark' ? 'light' : 'dark');
   group.render();
-  hourGroup.render();
 });
 
 refresh();
-setInterval(() => { refresh(); refreshHours(); }, 60000);
+setInterval(refresh, 60000);
 </script>
 </body>
 </html>
