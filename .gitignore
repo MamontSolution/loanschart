@@ -1,0 +1,49 @@
+# зависимости — ставятся из package-lock.json (npm ci)
+node_modules/
+
+# база и её служебные файлы (создаётся при первом запуске)
+data/*.db
+data/*.db-wal
+data/*.db-shm
+data/*.db-journal
+data/*.sqlite
+data/*.sqlite3
+!data/.gitkeep
+
+# резервные копии базы
+*.bak
+backup/
+
+# секреты и локальные переменные окружения
+.env
+.env.*
+!.env.example
+
+# логи
+*.log
+npm-debug.log*
+yarn-debug.log*
+yarn-error.log*
+pnpm-debug.log*
+
+# отчёты и кэши инструментов
+coverage/
+.nyc_output/
+.cache/
+*.tgz
+
+# редакторы / ОС
+.DS_Store
+._*
+.Spotlight-V100
+.Trashes
+Thumbs.db
+desktop.ini
+.idea/
+
+# VS Code: игнорируем всё, кроме общих для команды конфигов
+.vscode/*
+!.vscode/launch.json
+!.vscode/tasks.json
+!.vscode/settings.json
+!.vscode/extensions.json
